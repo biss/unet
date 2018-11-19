@@ -1,73 +1,77 @@
 
+import os
 import cv2
 import numpy as np
+from torch.utils.data import Dataset, DataLoader
 
-from .utility.utils import *
+#from .utils import *
 
 
-class TrainImageLoader(object):
+def open_image(fn):
+    flags = cv2.IMREAD_UNCHANGED+cv2.IMREAD_ANYDEPTH+cv2.IMREAD_ANYCOLOR
+    if not os.path.exists(fn):
+        raise OSError('No such file or directory: {}'.format(fn))
+    elif os.path.isdir(fn):
+        raise OSError('Is a directory: {}'.format(fn))
+    else:
+        try:
+            im = cv2.imread(str(fn), flags).astype(np.float32)/255
+            if im is None:
+                raise OSError("File not recognized by opencv: {}".format(fn))
+            return cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        except Exception as e:
+            raise OSError('Error handling image at: {}'.format(fn)) from e
 
-    def __init__(self, X_data, Y_data, input_img_resize=None,
-                 output_img_size=None, X_transform=None,
-                 Y_transform=None):
+
+def read2D(path):
+    return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+
+
+class ImageLoader(Dataset):
+
+    def __init__(self, train_dir, image_ids, mode='train', transform=None):
         """
         inputs:
-        X_data is a list containing all training data paths
-        y_data contains masks for training data in the same order
+        path is a list containing all training data paths
         """
-        self.X_train = X_data
-        self.y_train_masks = Y_data
-        self.input_img_resize = input_img_resize
-        self.output_img_resize = output_img_resize
-        self.X_transform = X_transform
-        self.Y_transform = Y_transform
+        self.mode = mode
+        self.train_dir = train_dir
+        self.image_ids = image_ids
+        self.transform = transform
 
     def __getitem__(self, index):
 
-        image = open_image(self.X_train[index])
-        if self.input_img_resize:
-            image = cv2.resize(image, self.input_img_resize,
-                               interpolation = cv.INTER_LINEAR)
+        img_id = self.image_ids[index]
+        train_path = os.path.join(self.train_dir, img_id, "images", img_id)
+        train_file = train_path + ".png"
+        image = open_image(train_file)
+        image_ids = self.image_ids[index]
 
-        mask = cv2.imread(self.y_train_masks[index])
-        if self.output_img_resize:
-            mask = cv2.resize(mask, self.output_img_resize,
-                              interpolation = cv.INTER_LINEAR)
-
-        if self.X_transform:
-            image = self.X_transform(image)
-
-        if self.Y_transform:
-            mask = self.Y_transform(mask)
-
-        return image, mask
+        if self.mode in ['train', 'valid']:
+            mclass_mask_path = os.path.join(self.train_dir, img_id, "multiclass_mask.png")
+            mask = read2D(mclass_mask_path)
+            if self.transform:
+                return self.transform(image, mask, image_ids)
+            else:
+                return image, mask, image_ids
+        else:
+            if self.transform:
+                return self.transform(image, image_ids)
+            else:
+                return image, image_ids
 
 
     def __len__(self):
-        assert len(self.X_data) == len(self.y_train_masks)
-        return len(self.X_data)
+        return len(self.image_ids)
 
 
-class TrainImageLoader(object):
+if __name__ == "__main__":
+    from utils import list_subdirectory
 
-    def __init__(self, X_data, input_img_resize=None,
-                 X_transform=None):
-        self.X_train = X_data
-        self.input_img_resize = input_img_resize
-        self.X_transform = X_transform
-
-    def __getitem__(self, index):
-        image = open_image(self.X_train[index])
-        if self.input_img_resize:
-            image = cv2.resize(image, self.input_img_resize,
-                               interpolation = cv.INTER_LINEAR)
-
-        if self.X_transform:
-            image = self.X_transform(image)
-
-        return image
-
-    def __len__(self):
-        assert len(self.X_data) == len(self.y_train_masks)
-        return len(self.X_data)
-
+    rootdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    image_paths, image_ids = list_subdirectory(path=os.path.join(rootdir, "data","train"))
+    train_set = ImageLoader(image_paths, image_ids, mode='train', transform=None)
+    def get_train_loader(batch_size):
+        train_loader = DataLoader(train_set, batch_size=batch_size,
+                                  sampler=train_sampler, num_workers=2)
+        return(train_loader)

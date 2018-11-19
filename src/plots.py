@@ -2,6 +2,7 @@
 import os
 import glob
 import numpy as np
+import cv2
 
 import matplotlib
 matplotlib.use('agg')
@@ -18,11 +19,13 @@ def show_img_msk_frompath(img_path, msk_path=None, alpha=0.35, size=7):
         fig=plt.figure(figsize=(size, size))
         fig.add_subplot(1, 2, 1)
         plt.imshow(image)
+        plt.xlabel('original image')
         mask_image = cv2.imread(msk_path, cv2.IMREAD_GRAYSCALE)
         masked_image = np.ma.masked_where(mask_image==0, mask_image)
         fig.add_subplot(1, 2, 2)
         plt.imshow(image)
         plt.imshow(masked_image, cmap='cool', alpha=alpha)
+        plt.xlabel('masked image')
     else:
         plt.imshow(image)
     plt.show()
@@ -33,10 +36,12 @@ def show_img_msk_fromarray(img_arr, msk_arr, alpha=0.35, size=7):
     fig=plt.figure(figsize=(size, size))
     fig.add_subplot(1, 2, 1)
     plt.imshow(img_arr)
+    plt.xlabel('original image')
     masked_image = np.ma.masked_where(msk_arr==0, msk_arr)
     fig.add_subplot(1, 2, 2)
     plt.imshow(img_arr)
     plt.imshow(masked_image, cmap='cool', alpha=alpha)
+    plt.xlabel('masked image')
     plt.show()
     plt.close()
 
@@ -77,17 +82,17 @@ def plot_all_masks(mask_paths):
     for i,mask in enumerate(mask_paths):
         mask_img = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
         fig.add_subplot(l, h, i+1)
-        plt.imshow(mask_img)
+        plt.imshow(mask_img, cmap="gray")
     plt.show()
 
 def plot_pair_from_path(img, msk):
-    img = plt.imread(img)
-    msk = plt.imread(msk)
+    img = cv2.imread(img, cv2.IMREAD_COLOR)
+    msk = cv2.imread(msk, cv2.IMREAD_GRAYSCALE)
     fig=plt.figure(figsize=(8, 8))
     fig.add_subplot(1, 2, 1)
     plt.imshow(img)
     fig.add_subplot(1, 2, 2)
-    plt.imshow(msk)
+    plt.imshow(msk, cmap="gray")
     plt.show()
     plt.close()
 
@@ -96,7 +101,7 @@ def plot_pair_from_arr(img, msk):
     fig.add_subplot(1, 2, 1)
     plt.imshow(img)
     fig.add_subplot(1, 2, 2)
-    plt.imshow(msk)
+    plt.imshow(msk, cmap="gray")
     plt.show()
     plt.close()
 
