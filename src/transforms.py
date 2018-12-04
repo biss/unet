@@ -19,6 +19,12 @@ def get_3d_mask(mask):
     return multiclass_out
 
 
+def get_2d_mask(mask):
+    # back, fore, contour (30, 110, 215)
+    single_channel_out = ((mask == 102)*1) + ((mask == 215)*1)
+    return single_channel_out
+
+
 def train_augment(image, mask, index, size=256):
     # apply some transforms
     if random.uniform(0,1) < 0.66:
