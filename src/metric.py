@@ -77,7 +77,7 @@ def print_precision(precision):
 
 def compute_average_precision_for_mask(predict, truth, t_range=np.arange(0.5, 1.0, 0.05)):
 
-    num_truth   = len(np.unique(truth  ))
+    num_truth   = len(np.unique(truth))
     num_predict = len(np.unique(predict))
 
     # Compute intersection between all objects

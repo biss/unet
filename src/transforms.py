@@ -18,6 +18,11 @@ def get_3d_mask(mask):
     multiclass_out = np.dstack([back_channel, nuclei_channel, contour_channel])
     return multiclass_out
 
+def get_2d_mask(mask):
+    # back, fore, contour (30, 110, 215)
+    single_channel_out = ((mask == 102)*1) + ((mask == 215)*1)
+    return single_channel_out
+
 
 def train_augment(image, mask, index, size=256):
     # apply some transforms
@@ -25,7 +30,7 @@ def train_augment(image, mask, index, size=256):
         image, mask = random_horizontal_flip_transform2(image, mask)
         image, mask = random_vertical_flip_transform2(image, mask)
         image, mask = random_rotate_transform2(image, mask)
-        image, mask = random_angle_rotate_transform2(image, mask)
+        #image, mask = random_angle_rotate_transform2(image, mask)
         image, mask = random_crop_transform2(image, mask)
     # format image
     mask = get_3d_mask(mask).astype(np.uint8)
@@ -107,7 +112,7 @@ def random_vertical_flip_transform(image, p=0.5):
     """
     if random.uniform(0,1) < p:
         image = cv2.flip(image, 1)
-    return image, mask
+    return image
 
 # 90,180,270 degrees
 def random_rotate_transform2(image, mask, p=0.5):
@@ -119,9 +124,10 @@ def random_rotate_transform2(image, mask, p=0.5):
         angle = random.choice([90,180,270])
         assert image.shape[:2] == mask.shape[:2]
         center = tuple(np.array(image.shape[1::-1]) / 2)
-        rot_mat = cv2.getRotationMatrix2D(center, angle, 1.0)
-        image = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
-        mask = cv2.warpAffine(mask, rot_mat, mask.shape[1::-1], flags=cv2.INTER_LINEAR)
+        rot_mat = cv2.getRotationMatrix2D(center, angle, 1)
+        image = cv2.warpAffine(image, rot_mat, image.shape[1::-1])
+        mask = cv2.warpAffine(mask, rot_mat, mask.shape[1::-1])#, flags=cv2.INTER_LINEAR)
+        mask[mask == 0] = 30
     return image, mask
 
 def random_rotate_transform(image, p=0.5):
@@ -132,8 +138,8 @@ def random_rotate_transform(image, p=0.5):
     if random.uniform(0,1) < p:
         angle = random.choice([90,180,270])
         center = tuple(np.array(image.shape[1::-1]) / 2)
-        rot_mat = cv2.getRotationMatrix2D(center, angle, 1.0)
-        image = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+        rot_mat = cv2.getRotationMatrix2D(center, angle, 1)
+        image = cv2.warpAffine(image, rot_mat, image.shape[1::-1])#, flags=cv2.INTER_LINEAR)
     return image
 
 def random_angle_rotate_transform2(image, mask, p=0.5):
@@ -144,9 +150,20 @@ def random_angle_rotate_transform2(image, mask, p=0.5):
         angle = random.randrange(0,360,10)
         assert image.shape[:2] == mask.shape[:2]
         center = tuple(np.array(image.shape[1::-1]) / 2)
-        rot_mat = cv2.getRotationMatrix2D(center, angle, 1.0)
-        image = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
-        mask = cv2.warpAffine(mask, rot_mat, mask.shape[1::-1], flags=cv2.INTER_LINEAR)
+        rot_mat = cv2.getRotationMatrix2D(center, angle, 1)
+        image = cv2.warpAffine(image, rot_mat, image.shape[1::-1])
+
+        # TODO seems like warpAffine messes a grayscale image during rotation,
+        # TODO we have to rotate each layer of segmented image and stick them together at the end
+        # back, fore, contour (30, 110, 215)
+        #back_channel = (mask == 30)*1
+        #nuclei_channel = (mask == 102)*1
+        #contour_channel = (mask == 215)*1
+        # stack depth-wise
+        #multiclass_out = np.dstack([back_channel, nuclei_channel, contour_channel])
+
+        mask = cv2.warpAffine(mask, rot_mat, mask.shape[1::-1])
+        mask = cv2.threshold(mask, 128, 215, cv2.THRESH_BINARY)[1]
     return image, mask
 
 def random_angle_rotate_transform(image, p=0.5):
@@ -156,8 +173,8 @@ def random_angle_rotate_transform(image, p=0.5):
     if random.uniform(0,1) < p:
         angle = random.randrange(0,360,10)
         center = tuple(np.array(image.shape[1::-1]) / 2)
-        rot_mat = cv2.getRotationMatrix2D(center, angle, 1.0)
-        image = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+        rot_mat = cv2.getRotationMatrix2D(center, angle, 1)
+        image = cv2.warpAffine(image, rot_mat, image.shape[1::-1])
     return image
 
 def random_crop_transform2(image, mask, p=0.5):

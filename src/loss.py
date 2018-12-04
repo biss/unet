@@ -15,15 +15,17 @@ class CrossEntropyLoss2d(nn.Module):
         return self.nll_loss(F.log_softmax(logits, dim=1), targets)
 
 class BCELoss2d(nn.Module):
+    """
+    use this loss when the target has only one channel
+    """
     def __init__(self, weight=None, size_average=True):
         super(BCELoss2d, self).__init__()
-        self.bce_loss = nn.BCELoss(weight, size_average)
+        self.bce_loss = nn.BCEWithLogitsLoss(weight, size_average)
 
     def forward(self, logits, targets):
-        probs = F.sigmoid(logits)
-        probs_flat = probs.view (-1)
+        logits_flat = logits.view (-1)
         targets_flat = targets.view(-1)
-        return self.bce_loss(probs_flat, targets_flat)
+        return self.bce_loss(logits_flat, targets_flat)
 
 
 class SoftDiceLoss(nn.Module):
@@ -40,17 +42,6 @@ class SoftDiceLoss(nn.Module):
         score = 2. * (intersection.sum(1)+1) / (m1.sum(1) + m2.sum(1)+1)
         score = 1- score.sum()/num
         return score
-
-class MulticlassBCELoss(nn.Module):
-    def __init__(self):
-        super(MulticlassBCELoss, self).__init__()
-        self.multiclassLoss = nn.CrossEntropyLoss(weight=None)
-
-    def forward(self, logits, targets):
-        b, c, h, w = logits.size()
-        targets = np.argmax(targets, axis=1)
-        loss = self.multiclassLoss(logits, targets)
-        return loss
 
 class MulticlassBCELoss2d(nn.Module):
     """

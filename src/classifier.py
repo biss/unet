@@ -14,9 +14,9 @@ class AverageMeter(object):
 
     def reset(self):
         self.count = 0
-        self.val = 0
-        self.sum = 0
-        self.avg = 0
+        self.val = 0.0
+        self.sum = 0.0
+        self.avg = 0.0
 
     def update(self, val, n=1):
         self.val = val
@@ -95,8 +95,9 @@ class NucleiClassifier:
         print("Epoch: {}".format(self.epoch_counter))
         print("LOSS - Training : [{}], Validation : [{}]".format(train_loss, val_loss))
         print("METRIC - Training : [{}], Validation : [{}]".format(train_metric, val_metric))
+        return valid_loss, valid_metric
 
-    def train(self, train_loader, valid_loader, epochs, threshold=0.5):
+    def train(self, train_loader, valid_loader, epochs, save_file=None, threshold=0.5):
         """
         Train model for n epochs
         Inputs:
@@ -105,13 +106,17 @@ class NucleiClassifier:
             epochs (int): Number of epochs to train the model for
             threshold (float): Threshold to use for evaluation metrics
         """
+        c_valid_loss = float('Inf')
         if self.use_gpu:
             self.net.cuda(self.gpu)
 
         for epoch in range(epochs):
-            self._run_epoch(train_loader, valid_loader, threshold)
+            valid_loss, _ = self._run_epoch(train_loader, valid_loader, threshold)
+            if valid_loss < c_valid_loss:
+                self.save_model(save_file)
+                c_valid_loss = valid_loss
 
-    def save_model(self, path="/model"):
+    def save_model(self, path="models/default"):
         """
         Save model parameters to the given path
         Inputs:
@@ -122,6 +127,7 @@ class NucleiClassifier:
             'state_dict': self.net.state_dict(),
             'optimizer': self.optimizer.state_dict()
         }
+        path += str(self.epoch_counter) + ".pth"
         torch.save(state, path)
 
     def restore_model(self, path):
